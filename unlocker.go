@@ -3,8 +3,8 @@ package bt
 import (
 	"context"
 
-	"github.com/libsv/go-bt/v2/bscript"
-	"github.com/libsv/go-bt/v2/sighash"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/sighash"
 )
 
 // UnlockerParams params used for unlocking an input with a `bt.Unlocker`.

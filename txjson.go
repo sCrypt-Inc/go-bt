@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/libsv/go-bt/v2/bscript"
 	"github.com/pkg/errors"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
 )
 
 type txJSON struct {

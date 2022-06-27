@@ -3,7 +3,7 @@ package bt
 import (
 	"encoding/hex"
 
-	"github.com/libsv/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
 )
 
 // UTXO an unspent transaction output, used for creating inputs

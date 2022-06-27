@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/libsv/go-bk/wif"
-	"github.com/libsv/go-bt/v2"
-	"github.com/libsv/go-bt/v2/bscript"
-	"github.com/libsv/go-bt/v2/unlocker"
+	"github.com/sCrypt-Inc/go-bt/v2"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/unlocker"
 )
 
 // This example gives a simple in-memory based example of how to implement and use a `bt.UnlockerGetter`

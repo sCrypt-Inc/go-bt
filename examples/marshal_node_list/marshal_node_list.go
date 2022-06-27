@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/libsv/go-bt/v2"
+	"github.com/sCrypt-Inc/go-bt/v2"
 )
 
 func main() {

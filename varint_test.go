@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/libsv/go-bt/v2"
+	"github.com/sCrypt-Inc/go-bt/v2"
 	"github.com/stretchr/testify/assert"
 )
 

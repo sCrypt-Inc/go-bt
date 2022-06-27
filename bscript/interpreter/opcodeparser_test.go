@@ -7,8 +7,8 @@ package interpreter
 import (
 	"testing"
 
-	"github.com/libsv/go-bt/v2/bscript"
-	"github.com/libsv/go-bt/v2/bscript/interpreter/errs"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript/interpreter/errs"
 )
 
 // TestOpcodeDisabled tests the opcodeDisabled function manually because all

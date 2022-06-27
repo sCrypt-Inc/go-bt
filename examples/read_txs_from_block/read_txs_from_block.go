@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/libsv/go-bt/v2"
-	"github.com/libsv/go-bt/v2/testing/data"
+	"github.com/sCrypt-Inc/go-bt/v2"
+	"github.com/sCrypt-Inc/go-bt/v2/testing/data"
 )
 
 // In this example, all txs from a block are being read in via chunking, so at no point

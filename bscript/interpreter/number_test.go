@@ -11,10 +11,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/libsv/go-bt/v2"
-	"github.com/libsv/go-bt/v2/bscript"
-	"github.com/libsv/go-bt/v2/bscript/interpreter/errs"
-	"github.com/libsv/go-bt/v2/bscript/interpreter/scriptflag"
+	"github.com/sCrypt-Inc/go-bt/v2"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript/interpreter/errs"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript/interpreter/scriptflag"
 )
 
 // hexToBytes converts the passed hex string into bytes and will panic if there

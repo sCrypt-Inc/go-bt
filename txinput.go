@@ -10,8 +10,8 @@ import (
 	"github.com/libsv/go-bk/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/libsv/go-bt/v2/bscript"
-	"github.com/libsv/go-bt/v2/sighash"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/sighash"
 )
 
 // UTXOGetterFunc is used for tx.Fund(...). It provides the amount of satoshis required

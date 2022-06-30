@@ -274,21 +274,7 @@ func TestValidateParams(t *testing.T) {
 			},
 			expErr: errors.New("no unlocking script provided"),
 		},
-		"invalid locking/unlocking script with checksig": {
-			params: execOpts{
-				lockingScript: func() *bscript.Script {
-					script, err := bscript.NewFromHexString("76a91454807ccc44c0eec0b0e187b3ce0e137e9c6cd65d88ac")
-					assert.NoError(t, err)
-					return script
-				}(),
-				unlockingScript: func() *bscript.Script {
-					script, err := bscript.NewFromHexString("483045022100a4d9da733aeb29f9ba94dcaa578e71662cf29dd9742ce4b022c098211f4fdb06022041d24db4eda239fa15a12cf91229f6c352adab3c1c10091fc2aa517fe0f487c5412102454c535854802e5eaeaf5cbecd20e0aa508486063b71194dfde34744f19f1a5d")
-					assert.NoError(t, err)
-					return script
-				}(),
-			},
-			expErr: errors.New("tx and previous output must be supplied for checksig"),
-		},
+
 		"provided locking script that differs from previoustxout's errors": {
 			params: execOpts{
 				lockingScript: func() *bscript.Script {
@@ -848,20 +834,13 @@ func TestEngine_WithState(t *testing.T) {
 				LastCodeSeperatorIdx: 0,
 				NumOps:               3,
 				SavedFirstStack:      [][]byte{},
-				Scripts: func() []ParsedScript {
+				Scripts: func() []*bscript.Script {
 					lscript, err := bscript.NewFromHexString("5253958852529387")
 					assert.NoError(t, err)
 					uscript, err := bscript.NewFromHexString("5456")
 					assert.NoError(t, err)
 
-					var parser DefaultOpcodeParser
-					parsedLScript, err := parser.Parse(lscript)
-					assert.NoError(t, err)
-
-					parsedUScript, err := parser.Parse(uscript)
-					assert.NoError(t, err)
-
-					return []ParsedScript{parsedUScript, parsedLScript}
+					return []*bscript.Script{lscript, uscript}
 				}(),
 				Genesis: struct {
 					AfterGenesis bool
@@ -887,20 +866,12 @@ func TestEngine_WithState(t *testing.T) {
 				LastCodeSeperatorIdx: 0,
 				NumOps:               8,
 				SavedFirstStack:      [][]byte{},
-				Scripts: func() []ParsedScript {
+				Scripts: func() []*bscript.Script {
 					lscript, err := bscript.NewFromHexString("5253958852529387")
 					assert.NoError(t, err)
 					uscript, err := bscript.NewFromHexString("5456")
 					assert.NoError(t, err)
-
-					var parser DefaultOpcodeParser
-					parsedLScript, err := parser.Parse(lscript)
-					assert.NoError(t, err)
-
-					parsedUScript, err := parser.Parse(uscript)
-					assert.NoError(t, err)
-
-					return []ParsedScript{parsedUScript, parsedLScript}
+					return []*bscript.Script{lscript, uscript}
 				}(),
 				Genesis: struct {
 					AfterGenesis bool

@@ -25,7 +25,7 @@ type thread struct {
 	debug Debugger
 	state StateHandler
 
-	scripts         []ParsedScript
+	scripts         []*bscript.Script
 	condStack       []int
 	savedFirstStack [][]byte // stack from first script for bip16 scripts
 
@@ -211,9 +211,9 @@ func (t *thread) validPC() error {
 		return errs.NewError(errs.ErrInvalidProgramCounter,
 			"past input scripts %v:%v %v:xxxx", t.scriptIdx, t.scriptOff, len(t.scripts))
 	}
-	if t.scriptOff >= len(t.scripts[t.scriptIdx]) {
+	if t.scriptOff >= len(*t.scripts[t.scriptIdx]) {
 		return errs.NewError(errs.ErrInvalidProgramCounter, "past input scripts %v:%v %v:%04d", t.scriptIdx, t.scriptOff,
-			t.scriptIdx, len(t.scripts[t.scriptIdx]))
+			t.scriptIdx, len(*t.scripts[t.scriptIdx]))
 	}
 	return nil
 }
@@ -243,6 +243,24 @@ func (t *thread) CheckErrorCondition(finalScript bool) error {
 	}
 
 	return nil
+}
+
+func (t *thread) IsPushOnly() bool {
+
+	script := t.scripts[0]
+
+	pscript, err := t.scriptParser.Parse(script)
+
+	if err != nil {
+		return false
+	}
+	for _, op := range pscript {
+		if op.op.val > bscript.Op16 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (t *thread) apply(opts *execOpts) error {
@@ -317,19 +335,13 @@ func (t *thread) apply(opts *execOpts) error {
 	// allows multiple scripts to be executed in sequence.  For example,
 	// with a pay-to-script-hash transaction, there will be ultimately be
 	// a third script to execute.
-	t.scripts = make([]ParsedScript, 2)
-	for i, script := range []*bscript.Script{uscript, lscript} {
-		pscript, err := t.scriptParser.Parse(script)
-		if err != nil {
-			return err
-		}
+	t.scripts = make([]*bscript.Script, 2)
 
-		t.scripts[i] = pscript
-	}
+	copy(t.scripts, []*bscript.Script{uscript, lscript})
 
 	// The signature script must only contain data pushes when the
 	// associated flag is set.
-	if t.hasFlag(scriptflag.VerifySigPushOnly) && !t.scripts[0].IsPushOnly() {
+	if t.hasFlag(scriptflag.VerifySigPushOnly) && !t.IsPushOnly() {
 		return errs.NewError(errs.ErrNotPushOnly, "signature script is not push only")
 	}
 
@@ -342,7 +354,7 @@ func (t *thread) apply(opts *execOpts) error {
 
 	if t.hasFlag(scriptflag.Bip16) && lscript.IsP2SH() {
 		// Only accept input scripts that push data for P2SH.
-		if !t.scripts[0].IsPushOnly() {
+		if !t.IsPushOnly() {
 			return errs.NewError(errs.ErrNotPushOnly, "pay to script hash is not push only")
 		}
 		t.bip16 = true
@@ -410,7 +422,11 @@ func (t *thread) Step() (bool, error) {
 		return true, err
 	}
 
-	opcode := t.scripts[t.scriptIdx][t.scriptOff]
+	opcode, err := t.scriptParser.GetParsedOpcode(&t.scriptOff, t.scripts[t.scriptIdx])
+
+	if err != nil {
+		return true, err
+	}
 
 	t.beforeExecuteOpcode()
 	// Execute the opcode while taking into account several things such as
@@ -426,7 +442,7 @@ func (t *thread) Step() (bool, error) {
 	}
 	t.afterExecuteOpcode()
 
-	t.scriptOff++
+	//t.scriptOff++
 
 	// The number of elements in the combination of the data and alt stacks
 	// must not exceed the maximum number of stack elements allowed.
@@ -436,7 +452,7 @@ func (t *thread) Step() (bool, error) {
 			"combined stack size %d > max allowed %d", combinedStackSize, t.cfg.MaxStackSize())
 	}
 
-	if t.scriptOff < len(t.scripts[t.scriptIdx]) {
+	if t.scriptOff < len(*t.scripts[t.scriptIdx]) {
 		return false, nil
 	}
 
@@ -465,10 +481,7 @@ func (t *thread) Step() (bool, error) {
 			}
 
 			script := t.savedFirstStack[len(t.savedFirstStack)-1]
-			pops, err := t.scriptParser.Parse(bscript.NewFromBytes(script))
-			if err != nil {
-				return false, err
-			}
+			pops := bscript.NewFromBytes(script)
 
 			t.scripts = append(t.scripts, pops)
 
@@ -479,7 +492,7 @@ func (t *thread) Step() (bool, error) {
 	}
 
 	// there are zero length scripts in the wild
-	if t.scriptIdx < len(t.scripts) && t.scriptOff >= len(t.scripts[t.scriptIdx]) {
+	if t.scriptIdx < len(t.scripts) && t.scriptOff >= len(*t.scripts[t.scriptIdx]) {
 		t.scriptIdx++
 	}
 
@@ -505,7 +518,16 @@ func (t *thread) SetStack(data [][]byte) {
 
 // subScript returns the script since the last OP_CODESEPARATOR.
 func (t *thread) subScript() ParsedScript {
-	return t.scripts[t.scriptIdx][t.lastCodeSep:]
+
+	s := t.scripts[t.scriptIdx]
+	a := (*s)[0:]
+	pscript, err := t.scriptParser.Parse(&a)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return pscript
 }
 
 // checkHashTypeEncoding returns whether the passed hashtype adheres to

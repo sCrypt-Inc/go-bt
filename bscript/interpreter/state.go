@@ -1,6 +1,9 @@
 package interpreter
 
-import "github.com/sCrypt-Inc/go-bt/v2/bscript/interpreter/scriptflag"
+import (
+	"github.com/sCrypt-Inc/go-bt/v2/bscript"
+	"github.com/sCrypt-Inc/go-bt/v2/bscript/interpreter/scriptflag"
+)
 
 // State a snapshot of a threads state during execution.
 type State struct {
@@ -9,7 +12,7 @@ type State struct {
 	ElseStack            [][]byte
 	CondStack            []int
 	SavedFirstStack      [][]byte
-	Scripts              []ParsedScript
+	Scripts              []*bscript.Script
 	ScriptIdx            int
 	OpcodeIdx            int
 	LastCodeSeperatorIdx int
@@ -22,16 +25,20 @@ type State struct {
 	}
 }
 
+var scriptParser = DefaultOpcodeParser{false}
+
 // Opcode the current interpreter.ParsedOpcode from the
 // threads program counter.
 func (s *State) Opcode() ParsedOpcode {
-	return s.Scripts[s.ScriptIdx][s.OpcodeIdx]
+	opcodeIdx := s.OpcodeIdx
+	opcode, _ := scriptParser.GetParsedOpcode(&opcodeIdx, s.Scripts[s.ScriptIdx])
+	return opcode
 }
 
 // RemainingScript the remaining script to be executed.
-func (s *State) RemainingScript() ParsedScript {
-	return s.Scripts[s.ScriptIdx][s.OpcodeIdx:]
-}
+// func (s *State) RemainingScript() ParsedScript {
+// 	return s.Scripts[s.ScriptIdx][s.OpcodeIdx:]
+// }
 
 // StateHandler interfaces getting and applying state.
 type StateHandler interface {
@@ -51,11 +58,11 @@ func (t *thread) State() *State {
 	offsetIdx := t.scriptOff
 	if scriptIdx >= len(t.scripts) {
 		scriptIdx = len(t.scripts) - 1
-		offsetIdx = len(t.scripts[scriptIdx]) - 1
+		offsetIdx = len(*t.scripts[scriptIdx]) - 1
 	}
 
-	if offsetIdx >= len(t.scripts[scriptIdx]) {
-		offsetIdx = len(t.scripts[scriptIdx]) - 1
+	if offsetIdx >= len(*t.scripts[scriptIdx]) {
+		offsetIdx = len(*t.scripts[scriptIdx]) - 1
 	}
 	ts := State{
 		DataStack:            make([][]byte, int(t.dstack.Depth())),
@@ -63,7 +70,7 @@ func (t *thread) State() *State {
 		ElseStack:            make([][]byte, int(t.elseStack.Depth())),
 		CondStack:            make([]int, len(t.condStack)),
 		SavedFirstStack:      make([][]byte, len(t.savedFirstStack)),
-		Scripts:              make([]ParsedScript, len(t.scripts)),
+		Scripts:              make([]*bscript.Script, len(t.scripts)),
 		ScriptIdx:            scriptIdx,
 		OpcodeIdx:            offsetIdx,
 		LastCodeSeperatorIdx: t.lastCodeSep,
@@ -104,8 +111,9 @@ func (t *thread) State() *State {
 	copy(ts.CondStack, t.condStack)
 
 	for i, script := range t.scripts {
-		ts.Scripts[i] = make(ParsedScript, len(script))
-		copy(ts.Scripts[i], script)
+		b := make(bscript.Script, len(*script))
+		copy(b, *script)
+		ts.Scripts[i] = &b
 	}
 
 	return &ts

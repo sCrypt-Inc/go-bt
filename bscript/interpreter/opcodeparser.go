@@ -11,6 +11,7 @@ import (
 // OpcodeParser parses *bscript.Script into a ParsedScript, and unparsing back
 type OpcodeParser interface {
 	Parse(*bscript.Script) (ParsedScript, error)
+	GetParsedOpcode(i *int, s *bscript.Script) (ParsedOpcode, error)
 	Unparse(ParsedScript) (*bscript.Script, error)
 }
 
@@ -191,6 +192,63 @@ func (p *DefaultOpcodeParser) Parse(s *bscript.Script) (ParsedScript, error) {
 		parsedOps = append(parsedOps, parsedOp)
 	}
 	return parsedOps, nil
+}
+
+// Parse takes a *bscript.Script and returns a interpreter.ParsedOpcode
+func (p *DefaultOpcodeParser) GetParsedOpcode(i *int, s *bscript.Script) (ParsedOpcode, error) {
+	script := *s
+
+	instruction := script[*i]
+
+	parsedOp := ParsedOpcode{op: opcodeArray[instruction]}
+	if p.ErrorOnCheckSig && parsedOp.RequiresTx() {
+		return parsedOp, errs.NewError(errs.ErrInvalidParams, "tx and previous output must be supplied for checksig")
+	}
+
+	switch {
+	case parsedOp.op.length == 1:
+		*i++
+	case parsedOp.op.length > 1:
+		if len(script[*i:]) < parsedOp.op.length {
+			return parsedOp, errs.NewError(errs.ErrMalformedPush, "opcode %s required %d bytes, script has %d remaining",
+				parsedOp.Name(), parsedOp.op.length, len(script[*i:]))
+		}
+		parsedOp.Data = script[*i+1 : *i+parsedOp.op.length]
+		*i += parsedOp.op.length
+	case parsedOp.op.length < 0:
+		var l uint
+		offset := *i + 1
+		if len(script[offset:]) < -parsedOp.op.length {
+			return parsedOp, errs.NewError(errs.ErrMalformedPush, "opcode %s required %d bytes, script has %d remaining",
+				parsedOp.Name(), parsedOp.op.length, len(script[offset:]))
+		}
+		// Next -length bytes are little endian length of data.
+		switch parsedOp.op.length {
+		case -1:
+			l = uint(script[offset])
+		case -2:
+			l = ((uint(script[offset+1]) << 8) |
+				uint(script[offset]))
+		case -4:
+			l = ((uint(script[offset+3]) << 24) |
+				(uint(script[offset+2]) << 16) |
+				(uint(script[offset+1]) << 8) |
+				uint(script[offset]))
+		default:
+			return parsedOp, errs.NewError(errs.ErrMalformedPush, "invalid opcode length %d", parsedOp.op.length)
+		}
+
+		offset += -parsedOp.op.length
+		if int(l) > len(script[offset:]) || int(l) < 0 {
+			return parsedOp, errs.NewError(errs.ErrMalformedPush, "opcode %s pushes %d bytes, script has %d remaining",
+				parsedOp.Name(), l, len(script[offset:]))
+		}
+
+		parsedOp.Data = script[offset : offset+int(l)]
+		*i += 1 - parsedOp.op.length + int(l)
+	}
+
+	return parsedOp, nil
 }
 
 // Unparse reverses the action of Parse and returns the

@@ -459,3 +459,116 @@ func (s *Script) UnmarshalJSON(bb []byte) error {
 	*s = *ss
 	return nil
 }
+
+func (s *Script) GetOp(pc *uint) (byte, []byte, bool) {
+
+	opcodeRet := OpINVALIDOPCODE
+
+	pvchRet := make([]byte, 0)
+
+	script := *s
+
+	len := uint(len(script))
+
+	if *pc >= len {
+		return opcodeRet, pvchRet, false
+	}
+
+	if len-*pc < 1 {
+		return opcodeRet, pvchRet, false
+	}
+
+	// Read instruction
+	opcode := script[*pc]
+
+	*pc++
+
+	if opcode <= OpPUSHDATA4 {
+		var nSize uint
+		if opcode < OpPUSHDATA1 {
+			nSize = uint(opcode)
+		} else if opcode == OpPUSHDATA1 {
+			if len-*pc < 1 {
+				return opcodeRet, pvchRet, false
+			}
+			nSize = uint(script[*pc])
+			*pc++
+		} else if opcode == OpPUSHDATA2 {
+			if len-*pc < 2 {
+				return opcodeRet, pvchRet, false
+			}
+
+			nSize = ((uint(script[*pc+1]) << 8) |
+				uint(script[*pc]))
+
+			*pc = *pc + 2
+
+		} else if opcode == OpPUSHDATA4 {
+			if len-*pc < 4 {
+				return opcodeRet, pvchRet, false
+			}
+
+			nSize = ((uint(script[*pc+3]) << 24) |
+				(uint(script[*pc+2]) << 16) |
+				(uint(script[*pc+1]) << 8) |
+				uint(script[*pc]))
+
+			*pc = *pc + 4
+		}
+		if len < *pc || len-*pc < nSize {
+			return opcodeRet, pvchRet, false
+		}
+
+		pvchRet = append(pvchRet, script[*pc:*pc+nSize]...)
+
+		if nSize > 0 {
+			*pc = *pc + nSize
+		}
+	}
+
+	return opcodeRet, pvchRet, true
+
+}
+
+func (s *Script) FindAndDelete(b *Script) uint {
+
+	var nFound uint = 0
+
+	lenb := uint(len(*b))
+
+	lens := uint(len(*s))
+
+	if lenb == 0 {
+		return nFound
+	}
+
+	var pc uint = 0
+	var pc2 uint = 0
+
+	var res Script
+
+	for {
+
+		res = append(res, (*s)[pc2:pc]...)
+
+		for lens-pc >= lenb && bytes.HasPrefix((*s)[pc:], *b) {
+			pc = pc + lenb
+			nFound++
+		}
+
+		pc2 = pc
+
+		_, _, success := (*s).GetOp(&pc)
+
+		if !success {
+			break
+		}
+	}
+
+	if nFound > 0 {
+		res = append(res, (*s)[pc2:]...)
+		*s = res
+	}
+
+	return nFound
+}

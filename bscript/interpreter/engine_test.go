@@ -848,20 +848,14 @@ func TestEngine_WithState(t *testing.T) {
 				LastCodeSeperatorIdx: 0,
 				NumOps:               3,
 				SavedFirstStack:      [][]byte{},
-				Scripts: func() []ParsedScript {
+				Scripts: func() []*bscript.Script {
+
 					lscript, err := bscript.NewFromHexString("5253958852529387")
 					assert.NoError(t, err)
 					uscript, err := bscript.NewFromHexString("5456")
 					assert.NoError(t, err)
+					return []*bscript.Script{uscript, lscript}
 
-					var parser DefaultOpcodeParser
-					parsedLScript, err := parser.Parse(lscript)
-					assert.NoError(t, err)
-
-					parsedUScript, err := parser.Parse(uscript)
-					assert.NoError(t, err)
-
-					return []ParsedScript{parsedUScript, parsedLScript}
 				}(),
 				Genesis: struct {
 					AfterGenesis bool
@@ -887,20 +881,12 @@ func TestEngine_WithState(t *testing.T) {
 				LastCodeSeperatorIdx: 0,
 				NumOps:               8,
 				SavedFirstStack:      [][]byte{},
-				Scripts: func() []ParsedScript {
+				Scripts: func() []*bscript.Script {
 					lscript, err := bscript.NewFromHexString("5253958852529387")
 					assert.NoError(t, err)
 					uscript, err := bscript.NewFromHexString("5456")
 					assert.NoError(t, err)
-
-					var parser DefaultOpcodeParser
-					parsedLScript, err := parser.Parse(lscript)
-					assert.NoError(t, err)
-
-					parsedUScript, err := parser.Parse(uscript)
-					assert.NoError(t, err)
-
-					return []ParsedScript{parsedUScript, parsedLScript}
+					return []*bscript.Script{uscript, lscript}
 				}(),
 				Genesis: struct {
 					AfterGenesis bool

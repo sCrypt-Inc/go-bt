@@ -1960,17 +1960,15 @@ func opcodeCheckSig(op *ParsedOpcode, t *thread) error {
 	// Remove the signature since there is no way for a signature
 	// to sign itself.
 	if !t.hasFlag(scriptflag.EnableSighashForkID) || !shf.Has(sighash.ForkID) {
-		subScript = subScript.removeOpcodeByData(fullSigBytes)
-		subScript = subScript.removeOpcode(bscript.OpCODESEPARATOR)
-	}
 
-	up, err := t.scriptParser.Unparse(subScript)
-	if err != nil {
-		return err
+		var s bscript.Script
+		s.AppendPushData(fullSigBytes)
+		subScript.FindAndDelete(&s)
+		subScript.FindAndDelete(bscript.NewFromBytes([]byte{bscript.OpCODESEPARATOR}))
 	}
 
 	txCopy := t.tx.Clone()
-	txCopy.Inputs[t.inputIdx].PreviousTxScript = up
+	txCopy.Inputs[t.inputIdx].PreviousTxScript = subScript
 
 	hash, err = txCopy.CalcInputSignatureHash(uint32(t.inputIdx), shf)
 	if err != nil {
@@ -2123,8 +2121,10 @@ func opcodeCheckMultiSig(op *ParsedOpcode, t *thread) error {
 	script := t.subScript()
 
 	for _, sigInfo := range signatures {
-		script = script.removeOpcodeByData(sigInfo.signature)
-		script = script.removeOpcode(bscript.OpCODESEPARATOR)
+		var s bscript.Script
+		s.AppendPushData(sigInfo.signature)
+		script.FindAndDelete(&s)
+		script.FindAndDelete(bscript.NewFromBytes([]byte{bscript.OpCODESEPARATOR}))
 	}
 
 	success := true
@@ -2203,7 +2203,6 @@ func opcodeCheckMultiSig(op *ParsedOpcode, t *thread) error {
 			continue
 		}
 
-		up, err := t.scriptParser.Unparse(script)
 		if err != nil {
 			t.dstack.PushBool(false)
 			return nil //nolint:nilerr // only need a false push in this case
@@ -2211,7 +2210,7 @@ func opcodeCheckMultiSig(op *ParsedOpcode, t *thread) error {
 
 		// Generate the signature hash based on the signature hash type.
 		txCopy := t.tx.Clone()
-		txCopy.Inputs[t.inputIdx].PreviousTxScript = up
+		txCopy.Inputs[t.inputIdx].PreviousTxScript = script
 
 		signatureHash, err := txCopy.CalcInputSignatureHash(uint32(t.inputIdx), shf)
 		if err != nil {

@@ -1442,13 +1442,45 @@ func opcodeLShift(op *ParsedOpcode, t *thread) error {
 		return err
 	}
 
-	l := len(x)
-	for i := 0; i < l-1; i++ {
-		x[i] = x[i]<<n | x[i+1]>>(8-n)
+	if n >= len(x)*8 {
+		t.dstack.PushByteArray(bytes.Repeat([]byte{0x00}, len(x)))
+		return nil
 	}
-	x[l-1] <<= n
 
-	t.dstack.PushByteArray(x)
+	bit_shift := n % 8
+	byte_shift := n / 8
+
+	make_lshift_mask := func() byte {
+		mask := []byte{0xFF, 0x7F, 0x3F, 0x1F, 0x0F, 0x07, 0x03, 0x01}
+		return mask[bit_shift]
+	}
+
+	mask := make_lshift_mask()
+
+	overflow_mask := ^mask
+
+	l := len(x)
+
+	r := make([]byte, l)
+
+	for index := l; index > 0; index-- {
+		i := index - 1
+		// make sure that k is always >= 0
+		if byte_shift <= i {
+			k := i - byte_shift
+			val := (x[i] & mask)
+			val <<= bit_shift
+			r[k] |= val
+
+			if k >= 1 {
+				carryval := (x[i] & overflow_mask)
+				carryval >>= 8 - bit_shift
+				r[k-1] |= carryval
+			}
+		}
+	}
+
+	t.dstack.PushByteArray(r)
 	return nil
 }
 
@@ -1468,13 +1500,44 @@ func opcodeRShift(op *ParsedOpcode, t *thread) error {
 		return err
 	}
 
-	l := len(x)
-	for i := l - 1; i > 0; i-- {
-		x[i] = x[i]>>n | x[i-1]<<(8-n)
+	if n >= len(x)*8 {
+		t.dstack.PushByteArray(bytes.Repeat([]byte{0x00}, len(x)))
+		return nil
 	}
-	x[0] >>= n
 
-	t.dstack.PushByteArray(x)
+	bit_shift := n % 8
+	byte_shift := n / 8
+
+	make_rshift_mask := func() byte {
+		mask := []byte{0xFF, 0xFE, 0xFC, 0xF8, 0xF0, 0xE0, 0xC0, 0x80}
+		return mask[bit_shift]
+	}
+
+	mask := make_rshift_mask()
+
+	overflow_mask := ^mask
+
+	l := len(x)
+
+	r := make([]byte, l)
+
+	for i := 0; i < l; i++ {
+
+		k := i + byte_shift
+		if k < l {
+			val := (x[i] & mask)
+			val >>= bit_shift
+			r[k] |= val
+		}
+
+		if k+1 < l {
+			carryval := (x[i] & overflow_mask)
+			carryval <<= 8 - bit_shift
+			r[k+1] |= carryval
+		}
+	}
+
+	t.dstack.PushByteArray(r)
 	return nil
 }
 
